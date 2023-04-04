@@ -2,7 +2,7 @@ export default {
     async fetch(request, env) {
       const url = new URL(request.url);
       if(url.pathname.includes("fulln")){
-        url.host = "chat-gpt-fulln.vercel.app";
+        url  = new URL("chat-gpt-fulln.vercel.app");
         // openai is already set all CORS heasders 
         return fetch(url, {
           headers: request.headers,
