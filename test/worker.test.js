@@ -74,7 +74,7 @@ test("routes only the configured server PackyAPI generation path", async () => {
 
   const forwarded = await captureUpstream(request);
 
-  assert.equal(forwarded.url, "https://www.packyapi.com/v1/images/generations");
+  assert.equal(forwarded.url, "https://api-slb.packyapi.com/v1/images/generations");
   assert.equal(forwarded.method, "POST");
   assert.equal(forwarded.headers.get("Authorization"), "Bearer packy-secret");
   assert.deepEqual(await forwarded.json(), { model: "gpt-image-2", n: 1 });
