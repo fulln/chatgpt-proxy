@@ -1,5 +1,6 @@
 const AIHUB_CLIENT_IP = "124.223.56.15";
 const AIHUB_ORIGIN = "https://aihub.top";
+const PACKYAPI_CLIENT_IP = "47.121.196.163";
 const PACKYAPI_ORIGIN = "https://www.packyapi.com";
 const PACKYAPI_PREFIX = "/packyapi";
 const PACKYAPI_PATHS = new Set([
@@ -20,7 +21,7 @@ function selectOrigin(request, url) {
   const packyPath = packyApiPath(url);
   if (
     packyPath !== null &&
-    request.headers.get("CF-Connecting-IP") === AIHUB_CLIENT_IP &&
+    request.headers.get("CF-Connecting-IP") === PACKYAPI_CLIENT_IP &&
     PACKYAPI_PATHS.has(packyPath) &&
     request.method === "POST"
   ) {
@@ -52,7 +53,7 @@ export default {
     const url = new URL(request.url);
     const packyPath = packyApiPath(url);
     if (packyPath !== null) {
-      if (request.headers.get("CF-Connecting-IP") !== AIHUB_CLIENT_IP) {
+      if (request.headers.get("CF-Connecting-IP") !== PACKYAPI_CLIENT_IP) {
         return new Response("Forbidden", { status: 403 });
       }
       if (!PACKYAPI_PATHS.has(packyPath) || request.method !== "POST") {

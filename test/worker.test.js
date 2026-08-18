@@ -65,7 +65,7 @@ test("routes only the configured server PackyAPI generation path", async () => {
       method: "POST",
       headers: {
         Authorization: "Bearer packy-secret",
-        "CF-Connecting-IP": "124.223.56.15",
+        "CF-Connecting-IP": "47.121.196.163",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ model: "gpt-image-2", n: 1 }),
@@ -97,7 +97,7 @@ test("rejects PackyAPI routes from every other source IP", async () => {
 
 test("does not expose arbitrary PackyAPI upstream paths", async () => {
   const request = new Request("https://proxy.example/packyapi/v1/models", {
-    headers: { "CF-Connecting-IP": "124.223.56.15" },
+    headers: { "CF-Connecting-IP": "47.121.196.163" },
   });
 
   const { response, upstreamCalled } = await captureResponse(request);
