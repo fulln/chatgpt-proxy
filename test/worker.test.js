@@ -80,6 +80,110 @@ test("routes only the configured server PackyAPI generation path", async () => {
   assert.deepEqual(await forwarded.json(), { model: "gpt-image-2", n: 1 });
 });
 
+test("routes only the configured server APIMart generation path", async () => {
+  const request = new Request(
+    "https://proxy.example/apimart/v1/images/generations",
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer apimart-secret",
+        "CF-Connecting-IP": "47.121.196.163",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model: "gpt-image-2-official", n: 1 }),
+    },
+  );
+
+  const forwarded = await captureUpstream(request);
+
+  assert.equal(forwarded.url, "https://api.apimart.ai/v1/images/generations");
+  assert.equal(forwarded.method, "POST");
+  assert.equal(forwarded.headers.get("Authorization"), "Bearer apimart-secret");
+  assert.deepEqual(await forwarded.json(), {
+    model: "gpt-image-2-official",
+    n: 1,
+  });
+});
+
+test("routes APIMart task polling without exposing arbitrary task paths", async () => {
+  const validRequest = new Request(
+    "https://proxy.example/apimart/v1/tasks/task_123-abc?language=en",
+    {
+      headers: { "CF-Connecting-IP": "47.121.196.163" },
+    },
+  );
+
+  const forwarded = await captureUpstream(validRequest);
+  assert.equal(
+    forwarded.url,
+    "https://api.apimart.ai/v1/tasks/task_123-abc?language=en",
+  );
+  assert.equal(forwarded.method, "GET");
+
+  const invalidRequest = new Request(
+    "https://proxy.example/apimart/v1/tasks/task_123-abc/private",
+    {
+      headers: { "CF-Connecting-IP": "47.121.196.163" },
+    },
+  );
+  const { response, upstreamCalled } = await captureResponse(invalidRequest);
+  assert.equal(response.status, 404);
+  assert.equal(upstreamCalled, false);
+});
+
+test("allows the configured server to read APIMart balance for diagnostics", async () => {
+  const request = new Request("https://proxy.example/apimart/v1/balance", {
+    headers: {
+      Authorization: "Bearer apimart-secret",
+      "CF-Connecting-IP": "47.121.196.163",
+    },
+  });
+
+  const forwarded = await captureUpstream(request);
+
+  assert.equal(forwarded.url, "https://api.apimart.ai/v1/balance");
+  assert.equal(forwarded.method, "GET");
+});
+
+test("rejects APIMart routes from every other source IP", async () => {
+  const request = new Request(
+    "https://proxy.example/apimart/v1/images/generations",
+    {
+      method: "POST",
+      headers: { "CF-Connecting-IP": "203.0.113.10" },
+    },
+  );
+
+  const { response, upstreamCalled } = await captureResponse(request);
+
+  assert.equal(response.status, 403);
+  assert.equal(upstreamCalled, false);
+});
+
+test("does not expose arbitrary APIMart upstream paths or methods", async () => {
+  const invalidPath = new Request(
+    "https://proxy.example/apimart/v1/models",
+    {
+      headers: { "CF-Connecting-IP": "47.121.196.163" },
+    },
+  );
+  const invalidMethod = new Request(
+    "https://proxy.example/apimart/v1/images/generations",
+    {
+      method: "DELETE",
+      headers: { "CF-Connecting-IP": "47.121.196.163" },
+    },
+  );
+
+  const pathResult = await captureResponse(invalidPath);
+  const methodResult = await captureResponse(invalidMethod);
+
+  assert.equal(pathResult.response.status, 404);
+  assert.equal(pathResult.upstreamCalled, false);
+  assert.equal(methodResult.response.status, 404);
+  assert.equal(methodResult.upstreamCalled, false);
+});
+
 test("rejects PackyAPI routes from every other source IP", async () => {
   const request = new Request(
     "https://proxy.example/packyapi/v1/images/generations",
