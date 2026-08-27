@@ -7,6 +7,15 @@ const PACKYAPI_PATHS = new Set([
   "/v1/images/generations",
   "/v1/images/edits",
 ]);
+const APIMART_CLIENT_IP = "47.121.196.163";
+const APIMART_ORIGIN = "https://api.apimart.ai";
+const APIMART_PREFIX = "/apimart";
+const APIMART_POST_PATHS = new Set([
+  "/v1/uploads/images",
+  "/v1/images/generations",
+]);
+const APIMART_GET_PATHS = new Set(["/v1/balance"]);
+const APIMART_TASK_PATH = /^\/v1\/tasks\/[A-Za-z0-9_-]{1,128}$/;
 const FULLN_ORIGIN = "https://chat-gpt-fulln.vercel.app";
 const OPENAI_ORIGIN = "https://api.openai.com";
 
@@ -17,7 +26,33 @@ function packyApiPath(url) {
   return url.pathname.slice(PACKYAPI_PREFIX.length);
 }
 
+function apimartPath(url) {
+  if (!url.pathname.startsWith(`${APIMART_PREFIX}/`)) {
+    return null;
+  }
+  return url.pathname.slice(APIMART_PREFIX.length);
+}
+
+function isAllowedApimartRequest(request, path) {
+  if (request.method === "POST") {
+    return APIMART_POST_PATHS.has(path);
+  }
+  if (request.method === "GET") {
+    return APIMART_GET_PATHS.has(path) || APIMART_TASK_PATH.test(path);
+  }
+  return false;
+}
+
 function selectOrigin(request, url) {
+  const apimartRoute = apimartPath(url);
+  if (
+    apimartRoute !== null &&
+    request.headers.get("CF-Connecting-IP") === APIMART_CLIENT_IP &&
+    isAllowedApimartRequest(request, apimartRoute)
+  ) {
+    return APIMART_ORIGIN;
+  }
+
   const packyPath = packyApiPath(url);
   if (
     packyPath !== null &&
@@ -43,6 +78,8 @@ function buildUpstreamUrl(request) {
   url.host = origin.host;
   if (origin.origin === PACKYAPI_ORIGIN) {
     url.pathname = packyApiPath(url);
+  } else if (origin.origin === APIMART_ORIGIN) {
+    url.pathname = apimartPath(url);
   }
 
   return url;
@@ -51,6 +88,16 @@ function buildUpstreamUrl(request) {
 export default {
   async fetch(request) {
     const url = new URL(request.url);
+    const apimartRoute = apimartPath(url);
+    if (apimartRoute !== null) {
+      if (request.headers.get("CF-Connecting-IP") !== APIMART_CLIENT_IP) {
+        return new Response("Forbidden", { status: 403 });
+      }
+      if (!isAllowedApimartRequest(request, apimartRoute)) {
+        return new Response("Not Found", { status: 404 });
+      }
+    }
+
     const packyPath = packyApiPath(url);
     if (packyPath !== null) {
       if (request.headers.get("CF-Connecting-IP") !== PACKYAPI_CLIENT_IP) {
