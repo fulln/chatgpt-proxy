@@ -18,6 +18,8 @@ const APIMART_GET_PATHS = new Set(["/v1/balance"]);
 const APIMART_TASK_PATH = /^\/v1\/tasks\/[A-Za-z0-9_-]{1,128}$/;
 const FULLN_ORIGIN = "https://chat-gpt-fulln.vercel.app";
 const OPENAI_ORIGIN = "https://api.openai.com";
+const B_AI_ORIGIN = "https://api.b.ai";
+const B_AI_PREFIX = "/bai";
 
 function packyApiPath(url) {
   if (!url.pathname.startsWith(`${PACKYAPI_PREFIX}/`)) {
@@ -31,6 +33,13 @@ function apimartPath(url) {
     return null;
   }
   return url.pathname.slice(APIMART_PREFIX.length);
+}
+
+function bAiPath(url) {
+  if (!url.pathname.startsWith(`${B_AI_PREFIX}/`)) {
+    return null;
+  }
+  return url.pathname.slice(B_AI_PREFIX.length);
 }
 
 function isAllowedApimartRequest(request, path) {
@@ -63,6 +72,15 @@ function selectOrigin(request, url) {
     return PACKYAPI_ORIGIN;
   }
 
+  // 来自 aihub 来源 IP 且路径带 /bai / 前缀时，优先转发到 api.b.ai
+  const bAiRoute = bAiPath(url);
+  if (
+    bAiRoute !== null &&
+    request.headers.get("CF-Connecting-IP") === AIHUB_CLIENT_IP
+  ) {
+    return B_AI_ORIGIN;
+  }
+
   if (request.headers.get("CF-Connecting-IP") === AIHUB_CLIENT_IP) {
     return AIHUB_ORIGIN;
   }
@@ -80,6 +98,8 @@ function buildUpstreamUrl(request) {
     url.pathname = packyApiPath(url);
   } else if (origin.origin === APIMART_ORIGIN) {
     url.pathname = apimartPath(url);
+  } else if (origin.origin === B_AI_ORIGIN) {
+    url.pathname = bAiPath(url);
   }
 
   return url;

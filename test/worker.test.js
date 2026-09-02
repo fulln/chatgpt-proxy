@@ -232,3 +232,39 @@ test("keeps the existing fulln route for other source IPs", async () => {
     "https://chat-gpt-fulln.vercel.app/fulln/status",
   );
 });
+
+test("routes /bai path from the AIHub source IP to api.b.ai", async () => {
+  const request = new Request(
+    "https://proxy.example/bai/v1/chat/completions?stream=true",
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer bai-secret",
+        "CF-Connecting-IP": "124.223.56.15",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model: "gpt-4o-mini" }),
+    },
+  );
+
+  const forwarded = await captureUpstream(request);
+
+  assert.equal(
+    forwarded.url,
+    "https://api.b.ai/v1/chat/completions?stream=true",
+  );
+  assert.equal(forwarded.method, "POST");
+  assert.equal(forwarded.headers.get("Authorization"), "Bearer bai-secret");
+  assert.deepEqual(await forwarded.json(), { model: "gpt-4o-mini" });
+});
+
+test("does not expose /bai path to other source IPs", async () => {
+  const request = new Request("https://proxy.example/bai/v1/models", {
+    headers: { "CF-Connecting-IP": "203.0.113.10" },
+  });
+
+  const forwarded = await captureUpstream(request);
+
+  // 非 aihub 来源 IP 不走 b.ai，回落到默认 openai 路由
+  assert.equal(forwarded.url, "https://api.openai.com/bai/v1/models");
+});

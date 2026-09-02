@@ -8,9 +8,10 @@
 
 1. `47.121.196.163` 请求 `/apimart` 前缀下的 APIMart 图片生成白名单接口时，移除前缀并转发到 `https://api.apimart.ai`。
 2. `47.121.196.163` 请求 `/packyapi` 前缀下的 PackyAPI 图片生成白名单接口时，移除前缀并转发到 `https://api-slb.packyapi.com`。
-3. 请求来源 IP 为 `124.223.56.15` 时，转发到 `https://aihub.top`。
-4. 其他请求的路径包含 `fulln` 时，转发到 `https://chat-gpt-fulln.vercel.app`。
-5. 其余请求转发到 `https://api.openai.com`。
+3. 请求来源 IP 为 `124.223.56.15` 且路径带 `/bai` 前缀时，移除前缀并转发到 `https://api.b.ai`。
+4. 请求来源 IP 为 `124.223.56.15` 时，转发到 `https://aihub.top`。
+5. 其他请求的路径包含 `fulln` 时，转发到 `https://chat-gpt-fulln.vercel.app`。
+6. 其余请求转发到 `https://api.openai.com`。
 
 APIMart 路由只允许 Elemento 生产服务器访问以下接口，不提供任意目标或任意路径代理：
 
